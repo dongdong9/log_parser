@@ -21,13 +21,18 @@ class TemplateMinerConfig:
         self.drain_depth = 4
         self.drain_max_children = 100
         self.drain_max_clusters = None
-        self.masking_instructions = []
+        self.masking_instructions = [] #yd。由ini配置文件中"masking"字段中的正则表达式构成
         self.mask_prefix = "<"
         self.mask_suffix = ">"
         self.parameter_extraction_cache_capacity = 3000
         self.parametrize_numeric_tokens = True
 
     def load(self, config_filename: str):
+        """
+        yd。功能：解析config_filename配置文件中设置的字段
+        :param config_filename: 配置文件（比如drain3.ini）的路径
+        :return:
+        """
         parser = configparser.ConfigParser()
         read_files = parser.read(config_filename)
         if len(read_files) == 0:
@@ -69,9 +74,9 @@ class TemplateMinerConfig:
         self.mask_suffix = parser.get(section_masking, 'mask_suffix', fallback=self.mask_suffix)
         self.parameter_extraction_cache_capacity = parser.get(section_masking, 'parameter_extraction_cache_capacity',
                                                               fallback=self.parameter_extraction_cache_capacity)
-
+        #yd。下面是将配置文件中的'masking'字段的内容解析出来，用正则表达式来构建MaskingInstruction对象，
         masking_instructions = []
-        masking_list = json.loads(masking_instructions_str)
+        masking_list = json.loads(masking_instructions_str) #yd。将masking_instructions_str转化为list
         for mi in masking_list:
             instruction = MaskingInstruction(mi['regex_pattern'], mi['mask_with'])
             masking_instructions.append(instruction)

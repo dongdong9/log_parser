@@ -7,12 +7,17 @@ from typing import List, Dict, Sequence
 from cachetools import LRUCache, Cache
 
 from drain3.simple_profiler import Profiler, NullProfiler
-from src.tool.tokenizer import get_token_list
+
 
 class LogCluster:
     __slots__ = ["log_template_tokens", "cluster_id", "size"]
 
     def __init__(self, log_template_tokens: list, cluster_id: int):
+        """
+        yd。功能：
+        :param log_template_tokens: 即经过分词后的token_list
+        :param cluster_id:
+        """
         self.log_template_tokens = tuple(log_template_tokens)
         self.cluster_id = cluster_id
         self.size = 1
@@ -45,6 +50,8 @@ class Node:
     __slots__ = ["key_to_child_node", "cluster_ids"]
 
     def __init__(self):
+        # yd。key_to_child_node这个字典在root_node这一层的格式为{str(token_count): Node() }
+        #                              在子节点这一层的格式为{ token/self.param: Node() }
         self.key_to_child_node: Dict[str, Node] = {}
         self.cluster_ids: List[int] = []
 
@@ -82,7 +89,7 @@ class Drain:
 
         self.log_cluster_depth = depth
         self.max_node_depth = depth - 2  # max depth of a prefix tree node, starting from zero
-        self.sim_th = sim_th
+        self.sim_th = sim_th #yd。similarity threshold
         self.max_children = max_children
         self.root_node = Node()
         self.profiler = profiler
@@ -101,10 +108,22 @@ class Drain:
 
     @staticmethod
     def has_numbers(s):
+        """
+        yd。功能：判断字符串s是否包含任何数字
+        :param s:
+        :return:
+        """
         return any(char.isdigit() for char in s)
 
     def tree_search(self, root_node: Node, tokens: list, sim_th: float, include_params: bool):
-
+        """
+        yd。功能：
+        :param root_node:
+        :param tokens: 将日志内容进行分词后的token_list
+        :param sim_th: 即similarity threshold
+        :param include_params:
+        :return:
+        """
         # at first level, children are grouped by token (word) count
         token_count = len(tokens)
         cur_node = root_node.key_to_child_node.get(str(token_count))
@@ -142,7 +161,14 @@ class Drain:
         return cluster
 
     def add_seq_to_prefix_tree(self, root_node, cluster: LogCluster):
-        token_count = len(cluster.log_template_tokens)
+        """
+        yd。功能：利用新构建的LogCluster来更新prefix_tree
+        :param root_node:
+        :param cluster: 新构建的LogCluster对象
+        :return:
+        """
+        # 第一步：判断token_count_str是否在root_node.key_to_child_node中，若不在则加入first_layer_node，若在里面，则获取first_layer_node
+        token_count = len(cluster.log_template_tokens)  # yd。获取LogCluster对象中token_list的长度，该token_list是由日志内容进分词后得到
         token_count_str = str(token_count)
         if token_count_str not in root_node.key_to_child_node:
             first_layer_node = Node()
@@ -156,24 +182,23 @@ class Drain:
         if token_count == 0:
             cur_node.cluster_ids = [cluster.cluster_id]
             return
-
-        current_depth = 1
-        for token in cluster.log_template_tokens:
-
+        # 第二步：判断每个token/self.param是否在cur_node.key_to_child_node中，若不在，则加入；若已存在，则取出child_node
+        current_depth = 1  # yd。初始值为1，每处理一个token，它的值就加一
+        for token in cluster.log_template_tokens:  # yd。log_template_tokens是将分词得到的token_list转换为tuple后的结果
             # if at max depth or this is last token in template - add current log cluster to the leaf node
-            if current_depth >= self.max_node_depth or current_depth >= token_count:
+            if current_depth >= self.max_node_depth or current_depth >= token_count:#yd。如果是token_list中的最后一个token
                 # clean up stale clusters before adding a new one.
                 new_cluster_ids = []
                 for cluster_id in cur_node.cluster_ids:
                     if cluster_id in self.id_to_cluster:
                         new_cluster_ids.append(cluster_id)
                 new_cluster_ids.append(cluster.cluster_id)
-                cur_node.cluster_ids = new_cluster_ids
+                cur_node.cluster_ids = new_cluster_ids #yd。如果是叶子节点，则需要给cluster_ids赋值，非叶子节点，cluster_ids的值都为空
                 break
 
             # if token not matched in this layer of existing tree.
             if token not in cur_node.key_to_child_node:
-                if self.parametrize_numeric_tokens and self.has_numbers(token):
+                if self.parametrize_numeric_tokens and self.has_numbers(token):#yd。如果token中含有数字
                     if self.param_str not in cur_node.key_to_child_node:
                         new_node = Node()
                         cur_node.key_to_child_node[self.param_str] = new_node
@@ -209,6 +234,13 @@ class Drain:
 
     # seq1 is a template, seq2 is the log to match
     def get_seq_distance(self, seq1, seq2, include_params: bool):
+        """
+
+        :param seq1:
+        :param seq2:
+        :param include_params:
+        :return:
+        """
         assert len(seq1) == len(seq2)
 
         # sequences are empty - full match
@@ -300,34 +332,20 @@ class Drain:
             out_str = '\t' * (depth + 1) + str(cluster)
             print(out_str, file=file)
 
-    def get_content_as_tokens_raw(self, content):
-        """
-        这是drain3最原始的分词代码，只考虑了英文，没有考虑中文的情况
-        :param content:
-        :return:
-        """
+    def get_content_as_tokens(self, content):
         content = content.strip()
         for delimiter in self.extra_delimiters:
             content = content.replace(delimiter, " ")
         content_tokens = content.split()
         return content_tokens
 
-    def get_content_as_tokens(self, content):
-        """
-        考虑中英文混杂，纯英文两种情况
-        :param content:
-        :return:
-        """
-        content = content.strip()
-        # for delimiter in self.extra_delimiters:
-        #     content = content.replace(delimiter, " ")
-        # content_tokens = content.split()
-        is_contain_chinese, substr_type_pattern, substr_detail_list, token_list = get_token_list(content)
-        content_tokens = token_list
-        return content_tokens
-
     def add_log_message(self, content: str):
-        content_tokens = self.get_content_as_tokens(content)
+        """
+        yd。功能：根据传入的content，获取匹配的logCluster，该LogCluster可能是先前已经存在的，也可能是需要新生成的
+        :param content:被正则匹配mask后的日志内容
+        :return:match_cluster：匹配的logCluster；update_type：表示更新match_cluster的原因
+        """
+        content_tokens = self.get_content_as_tokens(content)  # yd。对content进行分词
 
         if self.profiler:
             self.profiler.start_section("tree_search")
@@ -336,14 +354,15 @@ class Drain:
             self.profiler.end_section()
 
         # Match no existing log cluster
+        # yd。即没有匹配到任何已经存在的log cluster，即没有匹配到任何已经存在的log模板，此时就要新创建一个LogCluster对象
         if match_cluster is None:
             if self.profiler:
                 self.profiler.start_section("create_cluster")
             self.clusters_counter += 1
             cluster_id = self.clusters_counter
-            match_cluster = LogCluster(content_tokens, cluster_id)
+            match_cluster = LogCluster(content_tokens, cluster_id) #yd。构造一个新的LogCluster对象
             self.id_to_cluster[cluster_id] = match_cluster
-            self.add_seq_to_prefix_tree(self.root_node, match_cluster)
+            self.add_seq_to_prefix_tree(self.root_node, match_cluster) #利用新构建的match_cluster来更新prefix_tree
             update_type = "cluster_created"
 
         # Add the new log message to the existing cluster

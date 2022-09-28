@@ -49,7 +49,7 @@ class TemplateMiner:
 
         self.persistence_handler = persistence_handler
 
-        param_str = self.config.mask_prefix + "*" + self.config.mask_suffix
+        param_str = self.config.mask_prefix + "*" + self.config.mask_suffix #yd。将param_str的值设为<*>
         self.drain = Drain(
             sim_th=self.config.drain_sim_th,
             depth=self.config.drain_depth,
@@ -62,13 +62,13 @@ class TemplateMiner:
         )
         self.masker = LogMasker(self.config.masking_instructions, self.config.mask_prefix, self.config.mask_suffix)
         self.parameter_extraction_cache = LRUCache(self.config.parameter_extraction_cache_capacity)
-        self.last_save_time = time.time()
-        if persistence_handler is not None:
+        self.last_save_time = time.time() #yd。表示最近一次将self.drain对象进行序列化得到state，并保存state的时间
+        if persistence_handler is not None: #yd。如果持久化handler不为None，则加载state
             self.load_state()
 
     def load_state(self):
         """
-        加载之前的状态，
+        yd。加载之前保存的state，然后将state反序列化，用反序列化的结果来更新self.drain对象，
         :return:
         """
         # yd。这里选择不许需要之前的状态
@@ -104,16 +104,30 @@ class TemplateMiner:
             len(loaded_drain.clusters), loaded_drain.get_total_cluster_size()))
 
     def save_state(self, snapshot_reason):
-        state = jsonpickle.dumps(self.drain, keys=True).encode('utf-8')
-        if self.config.snapshot_compress_state:
+        """
+        yd。功能：将self.drain对象序列化后得到state，将state保存到指定文件中
+        :param snapshot_reason:
+        :return:
+        """
+        state = jsonpickle.dumps(self.drain, keys=True).encode('utf-8') #yd。将self.drain这个对象序列化
+        if self.config.snapshot_compress_state:#yd。如果需要压缩state snapshot，则进行压缩
             state = base64.b64encode(zlib.compress(state))
 
         logger.info(f"Saving state of {len(self.drain.clusters)} clusters "
                     f"with {self.drain.get_total_cluster_size()} messages, {len(state)} bytes, "
                     f"reason: {snapshot_reason}")
-        self.persistence_handler.save_state(state)
+
+        self.persistence_handler.save_state(state) #yd。文件持久化，即将state保存到指定路径所在的文件中
 
     def get_snapshot_reason(self, change_type, cluster_id):
+        """
+        yd。功能：获取保存snapshot的原因，主要原因有两个：
+            1、change_type不为none；
+            2、距离上次保存snapshot的时间超过配置的间隔时间
+        :param change_type:
+        :param cluster_id:
+        :return:
+        """
         if change_type != "none":
             return "{} ({})".format(change_type, cluster_id)
 
@@ -124,21 +138,27 @@ class TemplateMiner:
         return None
 
     def add_log_message(self, log_message: str) -> dict:
+        """
+        yd。功能：根据当前传入的日志内容，获取对应的日志模板的logCluster
+        :param log_message: 一条日志的内容
+        :return:
+        """
         self.profiler.start_section("total")
 
         self.profiler.start_section("mask")
-        masked_content = self.masker.mask(log_message)
+        masked_content = self.masker.mask(log_message) #yd。将log_message字符串中正则匹配的子串，用特定符号替换，比如将content中的ip数字用"<:IP:>"替换
         self.profiler.end_section()
 
         self.profiler.start_section("drain")
-        cluster, change_type = self.drain.add_log_message(masked_content)
+        cluster, change_type = self.drain.add_log_message(masked_content) #yd。根据传入的masked_content，获取匹配的logCluster
         self.profiler.end_section("drain")
+
         result = {
             "change_type": change_type,
             "cluster_id": cluster.cluster_id,
             "cluster_size": cluster.size,
-            "template_mined": cluster.get_template(),
-            "cluster_count": len(self.drain.clusters)
+            "template_mined": cluster.get_template(), #yd。返回挖掘处理的日志模板
+            "cluster_count": len(self.drain.clusters) #yd。统计当前已经挖掘的模板的 总数
         }
 
         if self.persistence_handler is not None:
@@ -150,7 +170,7 @@ class TemplateMiner:
             self.profiler.end_section()
 
         self.profiler.end_section("total")
-        self.profiler.report(self.config.profiling_report_sec)
+        self.profiler.report(self.config.profiling_report_sec) #yd。这个方法啥事都没有干，可以不管
         return result
 
     def match(self, log_message: str, full_search_strategy="never") -> LogCluster:
@@ -216,7 +236,7 @@ class TemplateMiner:
         :return: A ordered list of ExtractedParameter for the log message
             or None if log_message does not correspond to log_template.
         """
-
+        #yd。将delimiter用空格替换
         for delimiter in self.config.drain_extra_delimiters:
             log_message = re.sub(delimiter, " ", log_message)
 
@@ -244,6 +264,13 @@ class TemplateMiner:
 
     @cachedmethod(lambda self: self.parameter_extraction_cache)
     def _get_template_parameter_extraction_regex(self, log_template: str, exact_matching: bool):
+        """
+
+        :param log_template:
+        :param exact_matching:
+        :return: template_regex:
+                param_group_name_to_mask_name，以dict的形式保存着正则表达式的名称和mask_name，例如{'p_0': 'HEX', 'p_1': '*', 'p_2': 'CMD', 'p_3': 'SEQ', 'p_4': 'IP', 'p_5': 'NUM', 'p_6': 'ID'}
+        """
         param_group_name_to_mask_name = dict()
         param_name_counter = [0]
         #print(f"  log_template传入的值 = {log_template}")
@@ -263,7 +290,7 @@ class TemplateMiner:
                     # We replace group names in those named groups, to avoid conflicts due to duplicate names.
                     if hasattr(mi, 'regex'):
                         mi_groups = mi.regex.groupindex.keys()
-                        pattern = mi.pattern
+                        pattern = mi.pattern #yd。取出构造正则表达式时的字符串
                     else:
                         # non regex masking instructions - support only non-exact matching
                         mi_groups = []
@@ -290,7 +317,7 @@ class TemplateMiner:
             # Give each capture group a unique name to avoid conflicts.
             param_group_name = get_next_param_name()
             param_group_name_to_mask_name[param_group_name] = _mask_name
-            joined_patterns = "|".join(allowed_patterns)
+            joined_patterns = "|".join(allowed_patterns) #yd。将正则表达式join起来
             capture_regex = "(?P<{}>{})".format(param_group_name, joined_patterns)
             return capture_regex
 
@@ -301,7 +328,7 @@ class TemplateMiner:
         # the Drain catch-all mask
         mask_names.add("*")
 
-        escaped_prefix = re.escape(self.masker.mask_prefix)
+        escaped_prefix = re.escape(self.masker.mask_prefix) #yd。将字符串中所有可能被解释为正则运算符的字符进行转义
         escaped_suffix = re.escape(self.masker.mask_suffix)
         template_regex = re.escape(log_template)
         #print(f"template_regex最初的值 = {template_regex}")
@@ -319,6 +346,7 @@ class TemplateMiner:
                 template_regex = template_regex_new
 
         #print(f"template_regex处理的值 = {template_regex}")
+        #yd。将正则表达式template_regex进行改造，将其中的空格替换为"\\s+"，并且在template_regex前后分别加上起始符和结束符
         # match also messages with multiple spaces or other whitespace chars between tokens
         template_regex = re.sub(r"\\ ", r"\\s+", template_regex)
         template_regex = "^" + template_regex + "$"

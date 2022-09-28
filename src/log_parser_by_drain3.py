@@ -39,7 +39,7 @@ class LogParserByDrain3:
         result = self.template_miner.add_log_message(log_line)
         result_json = json.dumps(result)
         #print(result_json)
-        template = result["template_mined"]
+        template = result["template_mined"] #yd。取出挖掘的日志模板
         params = self.template_miner.extract_parameters(template, log_line)
         #print("Parameters: " + str(params))
         return result, params

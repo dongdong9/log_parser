@@ -2,7 +2,7 @@
 
 import json
 import logging
-import sys,os
+import sys, os
 from os.path import dirname
 
 from drain3 import TemplateMiner
@@ -23,8 +23,8 @@ if persistence_type == "KAFKA":
 
 elif persistence_type == "FILE":
     from drain3.file_persistence import FilePersistence
-    drain3_state_bin_file_path = os.path.join(CONFIG_DIR_PATH, "drain3_state.bin")
     #persistence = FilePersistence("drain3_state.bin")
+    drain3_state_bin_file_path = os.path.join(CONFIG_DIR_PATH, "drain3_state.bin")
     persistence = FilePersistence(drain3_state_bin_file_path)
 
 elif persistence_type == "REDIS":
@@ -40,8 +40,8 @@ else:
     persistence = None
 
 config = TemplateMinerConfig()
+# config.load(dirname(__file__) + "/drain3.ini")
 drain3_ini_file_path = os.path.join(CONFIG_DIR_PATH, "drain3.ini")
-#config.load(dirname(__file__) + "/drain3.ini")
 config.load(drain3_ini_file_path)
 config.profiling_enabled = False
 

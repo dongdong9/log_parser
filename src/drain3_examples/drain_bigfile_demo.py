@@ -7,9 +7,10 @@ import subprocess
 import sys
 import time
 from os.path import dirname
-from src.common_config import CONFIG_DIR_PATH
+
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
+from src.common_config import CONFIG_DIR_PATH
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
@@ -26,8 +27,9 @@ if not os.path.isfile(in_log_file):
 
 
 config = TemplateMinerConfig()
-drain3_ini_file_path = os.path.join(CONFIG_DIR_PATH, "drain3.ini")
 #config.load(dirname(__file__) + "/drain3.ini")
+drain3_ini_file_path = os.path.join(CONFIG_DIR_PATH, "drain3.ini")
+config.load(drain3_ini_file_path)
 config.profiling_enabled = True
 template_miner = TemplateMiner(config=config)
 

@@ -33,6 +33,13 @@ class MaskingInstruction(AbstractMaskingInstruction):
         return self.regex.pattern
 
     def mask(self, content: str, mask_prefix: str, mask_suffix: str) -> str:
+        """
+        yd。功能：将content中正则匹配的子串，用指定字符串替换，比如将content中的ip替换为<:IP:>
+        :param content:
+        :param mask_prefix:
+        :param mask_suffix:
+        :return:
+        """
         mask = mask_prefix + self.mask_with + mask_suffix
         return self.regex.sub(mask, content)
 
@@ -48,12 +55,17 @@ class LogMasker:
         self.mask_prefix = mask_prefix
         self.mask_suffix = mask_suffix
         self.masking_instructions = masking_instructions
-        self.mask_name_to_instructions = {}
+        self.mask_name_to_instructions = {} #yd。格式为{mask_name: masking_instruction_list}
         for mi in self.masking_instructions:
             self.mask_name_to_instructions.setdefault(mi.mask_with, [])
             self.mask_name_to_instructions[mi.mask_with].append(mi)
 
     def mask(self, content: str) -> str:
+        """
+        yd。功能：将content字符串中正则匹配的子串，用特定符号替换，比如将content中的ip数字用"<:IP:>"替换
+        :param content: 待正则匹配替换的字符串
+        :return:
+        """
         for mi in self.masking_instructions:
             content = mi.mask(content, self.mask_prefix, self.mask_suffix)
         return content
@@ -63,6 +75,11 @@ class LogMasker:
         return self.mask_name_to_instructions.keys()
 
     def instructions_by_mask_name(self, mask_name: str) -> Optional[Collection[AbstractMaskingInstruction]]:
+        """
+        yd。功能：根据mask_name查找到对应的masking_instruction_list
+        :param mask_name:
+        :return:
+        """
         return self.mask_name_to_instructions.get(mask_name, [])
 
 # Some masking examples
