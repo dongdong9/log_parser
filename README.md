@@ -6,8 +6,10 @@
 python3.7
 
 ## 运行方式：
-对于中文、中英文混杂的日志，采用统计的方法进行分析，直接执行src/log_parser_by_statistic.py;
+对于中文、中英文混杂的日志，采用统计的方法进行解析，直接执行src/log_parser_by_statistic.py;
 
-对于纯英文的日志，采用Drain3的方法进行分析，直接执行src/log_parser_by_drain3.py。
+对于中文、英文和中英文混杂三种类型的日志，采用Drain3的方法进行解析，直接执行src/log_parser_by_drain3.py。
+
+src/drain3_examples/drain_stdin_demo.py 可以从输入的日志中学习到日志模板，并且通过学习的模板对实时输入的日志进行解析，得到日志中的参数
 
 
