@@ -60,15 +60,7 @@ while True:
     result = template_miner.add_log_message(log_line)
     result_json = json.dumps(result,ensure_ascii=False)
     print(result_json)
-    if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
-        #template = result["template_mined"]
-        template = result.get(TEMPLATE_MINED_KEY, DEFAULT_STR_VALUE)
-        params = template_miner.extract_parameters(template, log_line)
-    else:
-        content_tokens = result.get(TOKEN_LIST_KEY, [])
-        #log_template_tokens = result["log_template_tokens"]
-        log_template_tokens = result.get(LOG_TEMPLATE_TOKENS_KEY,[])
-        params = template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
+    params = template_miner.get_parameter(result, log_line)
     print("Parameters: " + str(params))
 #yd。训练完毕，打印挖掘的每个cluster
 print("Training done. Mined clusters:")
@@ -80,10 +72,12 @@ while True:
     log_line = input("> ")
     if log_line == 'q':
         break
-    cluster = template_miner.match(log_line)
+    cluster, tokenize_result = template_miner.match(log_line)
     if cluster is None:
         print(f"No match found")
     else:
-        template = cluster.get_template()
-        print(f"Matched template #{cluster.cluster_id}: {template}")
-        print(f"Parameters: {template_miner.get_parameter_list(template, log_line)}")
+        # template = cluster.get_template()
+        # print(f"Matched template #{cluster.cluster_id}: {template}")
+        result = template_miner.make_result_dict(cluster, tokenize_result)
+        params = template_miner.get_parameter(result, log_line)
+        print(f"Parameters: {params}")

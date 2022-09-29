@@ -77,6 +77,8 @@ def split_substr(substr_detail_list, need_split_substr_type, is_split_by_space):
 
             split_list.extend(temp_token_list)
         else:
+            if substr_type == SPACE_SUBSTR_TYPE:
+                continue
             split_list.append(match_str)
     return split_list
 

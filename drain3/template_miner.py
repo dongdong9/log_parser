@@ -16,7 +16,7 @@ from drain3.persistence_handler import PersistenceHandler
 from drain3.simple_profiler import SimpleProfiler, NullProfiler, Profiler
 from drain3.template_miner_config import TemplateMinerConfig
 from src.common_config import CLUSTER_COUNT_KEY, DEFAULT_STR_VALUE, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
-    STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY,LOG_TEMPLATE_TOKENS_KEY
+    TOKEN_LIST_KEY, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY,LOG_TEMPLATE_TOKENS_KEY,ENABLE_MASK_CONTENT
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +139,15 @@ class TemplateMiner:
 
         return None
 
+    def make_result_dict(self,cluster, tokenize_result):
+        result_dict = {            CLUSTER_ID_KEY: cluster.cluster_id,
+            CLUSTER_SIZE_KEY: cluster.size, #yd。用于统计当前cluster匹配的日志条数
+            LOG_TEMPLATE_TOKENS_KEY: cluster.log_template_tokens,
+            TEMPLATE_MINED_KEY: cluster.get_template() # yd。返回挖掘处理的日志模板
+        }
+        result_dict.update(tokenize_result)
+        return result_dict
+
     def add_log_message(self, log_message: str) -> dict:
         """
         yd。功能：根据当前传入的日志内容，获取对应的日志模板的logCluster
@@ -147,7 +156,7 @@ class TemplateMiner:
         """
         self.profiler.start_section("total")
 
-        if 0:
+        if ENABLE_MASK_CONTENT:
             self.profiler.start_section("mask")
             # yd。将log_message字符串中正则匹配的子串，用特定符号替换。
             # 比如将"connected to 10.0.0.1"中的ip数字用"<:IP:>"替换，返回"connected to <:IP:>"
@@ -163,19 +172,11 @@ class TemplateMiner:
 
         result = {
             "change_type": change_type,
-            #"cluster_id": cluster.cluster_id,
-            CLUSTER_ID_KEY: cluster.cluster_id,
-            #"cluster_size": cluster.size, #yd。用于统计当前cluster匹配的日志条数
-            CLUSTER_SIZE_KEY: cluster.size, #yd。用于统计当前cluster匹配的日志条数
-            #"log_template_tokens": cluster.log_template_tokens,
-            LOG_TEMPLATE_TOKENS_KEY: cluster.log_template_tokens,
-            #"template_mined": cluster.get_template(), #yd。返回挖掘处理的日志模板
-            TEMPLATE_MINED_KEY: cluster.get_template(),  # yd。返回挖掘处理的日志模板
-            #"cluster_count": len(self.drain.clusters) #yd。统计当前已经挖掘的模板的 总数
             CLUSTER_COUNT_KEY: len(self.drain.clusters)  # yd。统计当前已经挖掘的模板的 总数
-
         }
-        result.update(tokenize_result)
+        result_dict = self.make_result_dict(cluster, tokenize_result)
+        result.update(result_dict)
+
         #yd。这里是将当前的日志模板信息的快照保存下来
         if self.persistence_handler is not None:
             self.profiler.start_section("save_state")
@@ -208,10 +209,15 @@ class TemplateMiner:
             count of wildcard matches.
         :return: Matched cluster or None if no match found.
         """
+        if ENABLE_MASK_CONTENT:
+            # yd。将log_message字符串中正则匹配的子串，用特定符号替换。
+            # 比如将"connected to 10.0.0.1"中的ip数字用"<:IP:>"替换，返回"connected to <:IP:>"
+            masked_content = self.masker.mask(log_message)
+        else:
+            masked_content = log_message
 
-        masked_content = self.masker.mask(log_message)
-        matched_cluster = self.drain.match(masked_content, full_search_strategy)
-        return matched_cluster
+        matched_cluster, tokenize_result = self.drain.match(masked_content, full_search_strategy)
+        return matched_cluster, tokenize_result
 
     def get_parameter_list(self, log_template: str, log_message: str) -> List[str]:
         """
@@ -229,6 +235,18 @@ class TemplateMiner:
         if not extracted_parameters:
             return []
         return [parameter.value for parameter in extracted_parameters]
+
+    def get_parameter(self,result_dict, log_line):
+        if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
+            # template = result["template_mined"]
+            template = result_dict.get(TEMPLATE_MINED_KEY, DEFAULT_STR_VALUE)
+            params = self.extract_parameters(template, log_line)
+            return params
+        content_tokens = result_dict.get(TOKEN_LIST_KEY, [])
+        # log_template_tokens = result["log_template_tokens"]
+        log_template_tokens = result_dict.get(LOG_TEMPLATE_TOKENS_KEY, [])
+        params = self.extract_parameters_by_compare(content_tokens, log_template_tokens)
+        return params
 
     def extract_parameters_by_compare(self, content_tokens, log_template_tokens):
         parameter_list = []

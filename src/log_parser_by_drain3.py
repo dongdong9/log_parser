@@ -5,9 +5,8 @@ from tqdm import tqdm  # 进度条
 from src.tool.read_save_file import open_excel, save_dataframe
 
 from src.common_config import DATA_DIR_PATH, DEFAULT_STR_VALUE, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
-    STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY
-from src.common_config import IS_CONTAIN_CHINESE_KEY, SUBSTR_TYPE_PATTERN_KEY, SUBSTR_DETAIL_LIST_KEY, \
-    TOKEN_LIST_KEY,LOG_TEMPLATE_TOKENS_KEY
+    CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY, IS_CONTAIN_CHINESE_KEY, SUBSTR_TYPE_PATTERN_KEY, \
+    SUBSTR_DETAIL_LIST_KEY, TOKEN_LIST_KEY, LOG_TEMPLATE_TOKENS_KEY
 
 from src.tool.str_related import get_tow_set_diff
 import json

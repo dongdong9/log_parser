@@ -462,17 +462,17 @@ class Drain:
         def full_search():
             all_ids = self.get_clusters_ids_for_seq_len(len(content_tokens))
             cluster = self.fast_match(all_ids, content_tokens, required_sim_th, include_params=True)
-            return cluster
+            return cluster, tokenize_result
 
         if full_search_strategy == "always":
             return full_search()
 
         match_cluster = self.tree_search(self.root_node, content_tokens, required_sim_th, include_params=True)
         if match_cluster is not None:
-            return match_cluster
+            return match_cluster, tokenize_result
 
         if full_search_strategy == "never":
-            return None
+            return None, tokenize_result
 
         return full_search()
 
