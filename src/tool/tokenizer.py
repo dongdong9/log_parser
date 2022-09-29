@@ -1,6 +1,6 @@
 from src.common_config import DATA_DIR_PATH,CHINESE_REGEXP,CONNECTOR_CHAR,\
     PUNCTUATION_MARK_REGEXP,NONE_CHINESE_REGEXP, CHINESE_SUBSTR_TYPE,SPACE_SUBSTR_TYPE, ENGLISH_SUBSTR_TYPE,\
-    CHINESE_SPACE_CHINESE_PATTERN,SPACE_CHAR,PUNCTUATION_MARK_TYPE
+    CHINESE_SPACE_CHINESE_PATTERN,PUNCTUATION_MARK_TYPE
 from src.tool.str_related import str_normalize, get_tow_set_diff
 import jieba
 
@@ -94,8 +94,7 @@ def get_token_list(content):
             token_list = split_substr(substr_detail_list, CHINESE_SUBSTR_TYPE, is_split_by_space=False)
     else:  # 即模式中不包含中文，则对英文按空格进行切分
         token_list = split_substr(substr_detail_list, ENGLISH_SUBSTR_TYPE, is_split_by_space=True)
-    token_join_str = SPACE_CHAR.join(token_list)
-    return is_contain_chinese, substr_type_pattern, substr_detail_list, token_list,token_join_str
+    return is_contain_chinese, substr_type_pattern, substr_detail_list, token_list
 
 
 if __name__ == '__main__':

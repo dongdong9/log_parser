@@ -15,6 +15,8 @@ from drain3.masking import LogMasker
 from drain3.persistence_handler import PersistenceHandler
 from drain3.simple_profiler import SimpleProfiler, NullProfiler, Profiler
 from drain3.template_miner_config import TemplateMinerConfig
+from src.common_config import CLUSTER_COUNT_KEY, DEFAULT_STR_VALUE, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
+    STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY,LOG_TEMPLATE_TOKENS_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -156,21 +158,24 @@ class TemplateMiner:
 
         self.profiler.start_section("drain")
         # yd。根据传入的masked_content，获取匹配的logCluster
-        cluster, change_type, content_tokens = self.drain.add_log_message(masked_content)
+        cluster, change_type, tokenize_result = self.drain.add_log_message(masked_content)
         self.profiler.end_section("drain")
 
         result = {
-            "content_tokens":content_tokens,
             "change_type": change_type,
-            "cluster_id": cluster.cluster_id,
-            "cluster_size": cluster.size, #yd。用于统计当前cluster匹配的日志条数
-            "log_template_tokens": cluster.log_template_tokens,
-            "template_mined": cluster.get_template(), #yd。返回挖掘处理的日志模板
-
-            "cluster_count": len(self.drain.clusters) #yd。统计当前已经挖掘的模板的 总数
+            #"cluster_id": cluster.cluster_id,
+            CLUSTER_ID_KEY: cluster.cluster_id,
+            #"cluster_size": cluster.size, #yd。用于统计当前cluster匹配的日志条数
+            CLUSTER_SIZE_KEY: cluster.size, #yd。用于统计当前cluster匹配的日志条数
+            #"log_template_tokens": cluster.log_template_tokens,
+            LOG_TEMPLATE_TOKENS_KEY: cluster.log_template_tokens,
+            #"template_mined": cluster.get_template(), #yd。返回挖掘处理的日志模板
+            TEMPLATE_MINED_KEY: cluster.get_template(),  # yd。返回挖掘处理的日志模板
+            #"cluster_count": len(self.drain.clusters) #yd。统计当前已经挖掘的模板的 总数
+            CLUSTER_COUNT_KEY: len(self.drain.clusters)  # yd。统计当前已经挖掘的模板的 总数
 
         }
-
+        result.update(tokenize_result)
         #yd。这里是将当前的日志模板信息的快照保存下来
         if self.persistence_handler is not None:
             self.profiler.start_section("save_state")

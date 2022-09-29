@@ -7,9 +7,8 @@ CONFIG_DIR_PATH = os.path.join(PROJECT_DIR_PATH, "config_ini")
 
 STAR_CHAR = "*"
 
-DEFAULT_STR_VALUE = " "
+DEFAULT_STR_VALUE = "-"
 
-SPACE_CHAR = " "
 
 USE_OLD_FUNCTION_EXTRACT_PARAMETER = False
 
@@ -32,4 +31,10 @@ NONE_CHINESE_REGEXP = re.compile(u"([^\u4e00-\u9fff|。,，:：=]+)")
 CLUSTER_ID_KEY = "cluster_id"
 CLUSTER_SIZE_KEY = "cluster_size"
 TEMPLATE_MINED_KEY = "template_mined"
+LOG_TEMPLATE_TOKENS_KEY = "log_template_tokens"
 CLUSTER_COUNT_KEY = "cluster_count" #用于统计当前已经有多少个cluster了，一个cluster就是一个log template
+
+IS_CONTAIN_CHINESE_KEY = "is_contain_chinese"
+SUBSTR_TYPE_PATTERN_KEY = "substr_type_pattern"
+SUBSTR_DETAIL_LIST_KEY = "substr_detail_list"
+TOKEN_LIST_KEY = "token_list"

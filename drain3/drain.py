@@ -8,6 +8,7 @@ from cachetools import LRUCache, Cache
 
 from drain3.simple_profiler import Profiler, NullProfiler
 from src.tool.tokenizer import get_token_list
+from src.common_config import IS_CONTAIN_CHINESE_KEY, SUBSTR_TYPE_PATTERN_KEY, SUBSTR_DETAIL_LIST_KEY, TOKEN_LIST_KEY
 
 class LogCluster:
     __slots__ = ["log_template_tokens", "cluster_id", "size"]
@@ -354,10 +355,12 @@ class Drain:
         :return:
         """
         content = content.strip()
-        is_contain_chinese, substr_type_pattern, substr_detail_list, token_list,token_join_str = get_token_list(content)
+        is_contain_chinese, substr_type_pattern, substr_detail_list, token_list = get_token_list(content)
         content_tokens = token_list
-        print(f"content_tokens = {content_tokens}")
-        return content_tokens
+        #print(f"content_tokens = {content_tokens}")
+        tokenize_result = {IS_CONTAIN_CHINESE_KEY : is_contain_chinese, SUBSTR_TYPE_PATTERN_KEY : substr_type_pattern,
+                           SUBSTR_DETAIL_LIST_KEY : substr_detail_list, TOKEN_LIST_KEY : token_list}
+        return content_tokens,tokenize_result
 
 
     def add_log_message(self, content: str):
@@ -366,7 +369,7 @@ class Drain:
         :param content:被正则匹配mask后的日志内容，例如"connected to <:IP:>"
         :return:match_cluster：匹配的logCluster；update_type：表示更新match_cluster的原因
         """
-        content_tokens = self.get_content_as_tokens(content)  # yd。对content进行分词
+        content_tokens, tokenize_result = self.get_content_as_tokens(content)  # yd。对content进行分词
 
         if self.profiler:
             self.profiler.start_section("tree_search")
@@ -404,7 +407,7 @@ class Drain:
         if self.profiler:
             self.profiler.end_section()
 
-        return match_cluster, update_type,content_tokens
+        return match_cluster, update_type,tokenize_result
 
     def get_clusters_ids_for_seq_len(self, seq_len: int):
         """
@@ -449,7 +452,7 @@ class Drain:
         assert full_search_strategy in ["always", "never", "fallback"]
 
         required_sim_th = 1.0
-        content_tokens = self.get_content_as_tokens(content)
+        content_tokens, tokenize_result = self.get_content_as_tokens(content)
 
         # consider for future improvement:
         # It is possible to implement a recursive tree_search (first try exact token match and fallback to

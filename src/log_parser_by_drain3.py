@@ -4,11 +4,12 @@ from collections import defaultdict
 from tqdm import tqdm  # 进度条
 from src.tool.read_save_file import open_excel, save_dataframe
 
-from src.common_config import DATA_DIR_PATH, CONNECTOR_CHAR, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
-    STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY,CLUSTER_COUNT_KEY
+from src.common_config import DATA_DIR_PATH, DEFAULT_STR_VALUE, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
+    STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY
+from src.common_config import IS_CONTAIN_CHINESE_KEY, SUBSTR_TYPE_PATTERN_KEY, SUBSTR_DETAIL_LIST_KEY, \
+    TOKEN_LIST_KEY,LOG_TEMPLATE_TOKENS_KEY
+
 from src.tool.str_related import get_tow_set_diff
-from src.tool.tool import calculate_normalize_ratio
-from src.tool.tokenizer import get_token_list
 import json
 import sys,os
 
@@ -36,35 +37,33 @@ class LogParserByDrain3:
         print(f"Starting training mode. Reading from std-in ('q' to finish)") #yd。利用输入的一条条日志，训练得到模板
 
     def parse_log_content(self, log_line):
-        # is_contain_chinese, substr_type_pattern, substr_detail_list, token_list, token_join_str = get_token_list(
-        #     log_line)
-        # log_line = token_join_str
         result = self.template_miner.add_log_message(log_line)
         result_json = json.dumps(result,ensure_ascii=False)
         #print(result_json)
+        # if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
+        #     template = result["template_mined"]
+        #     params = self.template_miner.extract_parameters(template, log_line)
+        # else:
+        #     content_tokens = result.get(TOKEN_LIST_KEY,[])
+        #     log_template_tokens = result["log_template_tokens"]
+        #     params = self.template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
         if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
-            template = result["template_mined"]
+            # template = result["template_mined"]
+            template = result.get(TEMPLATE_MINED_KEY, DEFAULT_STR_VALUE)
             params = self.template_miner.extract_parameters(template, log_line)
         else:
-            content_tokens = result["content_tokens"]
-            log_template_tokens = result["log_template_tokens"]
+            content_tokens = result.get(TOKEN_LIST_KEY, [])
+            # log_template_tokens = result["log_template_tokens"]
+            log_template_tokens = result.get(LOG_TEMPLATE_TOKENS_KEY, [])
             params = self.template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
         #print("Parameters: " + str(params))
         return result, params
-
-    def update_event_id_2_occurrences(self, event_id, event_id_2_occurrences):
-        if event_id not in event_id_2_occurrences:
-            event_id_2_occurrences[event_id] = 1
-        else:
-            event_id_2_occurrences[event_id] += 1
-        return event_id_2_occurrences
 
     def parse_log_file(self, raw_log_csv_path, result_file_path):
         log_item_df = open_excel(raw_log_csv_path)
         log_csv_header = ["_time", "content"]
         log_item_df = log_item_df[log_csv_header]
         analysis_result_list = []
-        event_id_2_occurrences = {}
         log_item_count = len(log_item_df)
         progress_bar = tqdm(total=log_item_count)
         for line_index, line_detail in enumerate(log_item_df.values.tolist()):
@@ -86,14 +85,13 @@ class LogParserByDrain3:
 
             event_id = result_dict.get(CLUSTER_ID_KEY, 1) -1
             event_template = result_dict.get(TEMPLATE_MINED_KEY, 0)
-            self.update_event_id_2_occurrences(event_id, event_id_2_occurrences)
-            Occurrences = event_id_2_occurrences[event_id]
-            substr_detail_list = "-"
-            substr_type_pattern = "-"
-            pattern_length = "-"
-            is_contain_chinese = "-"
-            token_list = "-"
-            token_count = "-"
+            Occurrences = result_dict.get(CLUSTER_SIZE_KEY, DEFAULT_STR_VALUE)
+            substr_detail_list = result_dict.get(SUBSTR_DETAIL_LIST_KEY, DEFAULT_STR_VALUE)
+            substr_type_pattern = result_dict.get(SUBSTR_TYPE_PATTERN_KEY, DEFAULT_STR_VALUE)
+            pattern_length = len(substr_detail_list)
+            is_contain_chinese = result_dict.get(IS_CONTAIN_CHINESE_KEY, DEFAULT_STR_VALUE)
+            token_list = result_dict.get(TOKEN_LIST_KEY, DEFAULT_STR_VALUE)
+            token_count = len(token_list)
             event_key = "-"
             star_ratio = "-"
             analysis_result_detail = [

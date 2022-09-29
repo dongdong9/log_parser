@@ -7,8 +7,8 @@ from os.path import dirname
 
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
-from src.common_config import CONFIG_DIR_PATH,USE_OLD_FUNCTION_EXTRACT_PARAMETER
-from src.tool.tokenizer import get_token_list
+from src.common_config import CONFIG_DIR_PATH,USE_OLD_FUNCTION_EXTRACT_PARAMETER,TOKEN_LIST_KEY,\
+    TEMPLATE_MINED_KEY,LOG_TEMPLATE_TOKENS_KEY,DEFAULT_STR_VALUE
 
 # persistence_type = "NONE"
 # persistence_type = "REDIS"
@@ -61,11 +61,13 @@ while True:
     result_json = json.dumps(result,ensure_ascii=False)
     print(result_json)
     if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
-        template = result["template_mined"]
+        #template = result["template_mined"]
+        template = result.get(TEMPLATE_MINED_KEY, DEFAULT_STR_VALUE)
         params = template_miner.extract_parameters(template, log_line)
     else:
-        content_tokens = result["content_tokens"]
-        log_template_tokens = result["log_template_tokens"]
+        content_tokens = result.get(TOKEN_LIST_KEY, [])
+        #log_template_tokens = result["log_template_tokens"]
+        log_template_tokens = result.get(LOG_TEMPLATE_TOKENS_KEY,[])
         params = template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
     print("Parameters: " + str(params))
 #yd。训练完毕，打印挖掘的每个cluster
