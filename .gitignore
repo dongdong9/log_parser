@@ -3,3 +3,4 @@ src/__pycache__/*
 .idea/
 src/drain3_examples/SSH.log
 src/drain3_examples/SSH.tar.gz
+config_ini/drain3_state.bin

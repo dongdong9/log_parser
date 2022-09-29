@@ -145,22 +145,33 @@ class TemplateMiner:
         """
         self.profiler.start_section("total")
 
-        self.profiler.start_section("mask")
-        masked_content = self.masker.mask(log_message) #yd。将log_message字符串中正则匹配的子串，用特定符号替换，比如将content中的ip数字用"<:IP:>"替换
-        self.profiler.end_section()
+        if 0:
+            self.profiler.start_section("mask")
+            # yd。将log_message字符串中正则匹配的子串，用特定符号替换。
+            # 比如将"connected to 10.0.0.1"中的ip数字用"<:IP:>"替换，返回"connected to <:IP:>"
+            masked_content = self.masker.mask(log_message)
+            self.profiler.end_section()
+        else:
+            masked_content = log_message
 
         self.profiler.start_section("drain")
-        cluster, change_type = self.drain.add_log_message(masked_content) #yd。根据传入的masked_content，获取匹配的logCluster
+        # yd。根据传入的masked_content，获取匹配的logCluster
+        cluster, change_type, content_tokens = self.drain.add_log_message(masked_content)
         self.profiler.end_section("drain")
 
         result = {
+            "content_tokens":content_tokens,
             "change_type": change_type,
             "cluster_id": cluster.cluster_id,
-            "cluster_size": cluster.size,
+            "cluster_size": cluster.size, #yd。用于统计当前cluster匹配的日志条数
+            "log_template_tokens": cluster.log_template_tokens,
             "template_mined": cluster.get_template(), #yd。返回挖掘处理的日志模板
+
             "cluster_count": len(self.drain.clusters) #yd。统计当前已经挖掘的模板的 总数
+
         }
 
+        #yd。这里是将当前的日志模板信息的快照保存下来
         if self.persistence_handler is not None:
             self.profiler.start_section("save_state")
             snapshot_reason = self.get_snapshot_reason(change_type, cluster.cluster_id)
@@ -214,6 +225,16 @@ class TemplateMiner:
             return []
         return [parameter.value for parameter in extracted_parameters]
 
+    def extract_parameters_by_compare(self, content_tokens, log_template_tokens):
+        parameter_list = []
+        for token1, token2 in zip(content_tokens, log_template_tokens):
+            if token1 == token2:
+                continue
+            extracted_parameter = ExtractedParameter(token1, mask_name="-")
+            parameter_list.append(extracted_parameter)
+        return parameter_list
+
+
     def extract_parameters(self,
                            log_template: str,
                            log_message: str,
@@ -244,8 +265,6 @@ class TemplateMiner:
             log_template, exact_matching)
 
         # Parameters are represented by specific named groups inside template_regex.
-
-
         parameter_match = re.match(template_regex, log_message)
 
         # log template does not match template
@@ -254,7 +273,7 @@ class TemplateMiner:
 
         # create list of extracted parameters
         extracted_parameters = []
-        for group_name, parameter in parameter_match.groupdict().items():
+        for group_name, parameter in parameter_match.groupdict().items(): #yd。对正则匹配的结果进行遍历
             if group_name in param_group_name_to_mask_name:
                 mask_name = param_group_name_to_mask_name[group_name]
                 extracted_parameter = ExtractedParameter(parameter, mask_name)
@@ -265,7 +284,7 @@ class TemplateMiner:
     @cachedmethod(lambda self: self.parameter_extraction_cache)
     def _get_template_parameter_extraction_regex(self, log_template: str, exact_matching: bool):
         """
-
+        yd。功能：构建模板参数抽取的正则表达式
         :param log_template:
         :param exact_matching:
         :return: template_regex:

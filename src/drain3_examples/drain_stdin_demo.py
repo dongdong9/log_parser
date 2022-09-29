@@ -7,7 +7,9 @@ from os.path import dirname
 
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
-from src.common_config import CONFIG_DIR_PATH
+from src.common_config import CONFIG_DIR_PATH,USE_OLD_FUNCTION_EXTRACT_PARAMETER
+from src.tool.tokenizer import get_token_list
+
 # persistence_type = "NONE"
 # persistence_type = "REDIS"
 # persistence_type = "KAFKA"
@@ -53,14 +55,21 @@ while True:
     log_line = input("> ")
     if log_line == 'q':
         break
+    # is_contain_chinese, substr_type_pattern, substr_detail_list, token_list, token_join_str = get_token_list(log_line)
+    # log_line = token_join_str
     result = template_miner.add_log_message(log_line)
-    result_json = json.dumps(result)
+    result_json = json.dumps(result,ensure_ascii=False)
     print(result_json)
-    template = result["template_mined"]
-    params = template_miner.extract_parameters(template, log_line)
+    if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
+        template = result["template_mined"]
+        params = template_miner.extract_parameters(template, log_line)
+    else:
+        content_tokens = result["content_tokens"]
+        log_template_tokens = result["log_template_tokens"]
+        params = template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
     print("Parameters: " + str(params))
-
-print("Training done. Mined clusters:") #yd。训练完毕，打印挖掘的cluster
+#yd。训练完毕，打印挖掘的每个cluster
+print("Training done. Mined clusters:")
 for cluster in template_miner.drain.clusters:
     print(cluster)
 

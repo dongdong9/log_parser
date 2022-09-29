@@ -4,7 +4,7 @@ from collections import defaultdict
 from tqdm import tqdm  # 进度条
 from src.tool.read_save_file import open_excel, save_dataframe
 
-from src.common_config import DATA_DIR_PATH, CONNECTOR_CHAR, \
+from src.common_config import DATA_DIR_PATH, CONNECTOR_CHAR, USE_OLD_FUNCTION_EXTRACT_PARAMETER,\
     STAR_CHAR, CLUSTER_ID_KEY,CLUSTER_SIZE_KEY,TEMPLATE_MINED_KEY,CLUSTER_COUNT_KEY
 from src.tool.str_related import get_tow_set_diff
 from src.tool.tool import calculate_normalize_ratio
@@ -36,11 +36,19 @@ class LogParserByDrain3:
         print(f"Starting training mode. Reading from std-in ('q' to finish)") #yd。利用输入的一条条日志，训练得到模板
 
     def parse_log_content(self, log_line):
+        # is_contain_chinese, substr_type_pattern, substr_detail_list, token_list, token_join_str = get_token_list(
+        #     log_line)
+        # log_line = token_join_str
         result = self.template_miner.add_log_message(log_line)
-        result_json = json.dumps(result)
+        result_json = json.dumps(result,ensure_ascii=False)
         #print(result_json)
-        template = result["template_mined"] #yd。取出挖掘的日志模板
-        params = self.template_miner.extract_parameters(template, log_line)
+        if USE_OLD_FUNCTION_EXTRACT_PARAMETER:
+            template = result["template_mined"]
+            params = self.template_miner.extract_parameters(template, log_line)
+        else:
+            content_tokens = result["content_tokens"]
+            log_template_tokens = result["log_template_tokens"]
+            params = self.template_miner.extract_parameters_by_compare(content_tokens, log_template_tokens)
         #print("Parameters: " + str(params))
         return result, params
 

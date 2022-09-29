@@ -7,7 +7,7 @@ from typing import List, Dict, Sequence
 from cachetools import LRUCache, Cache
 
 from drain3.simple_profiler import Profiler, NullProfiler
-
+from src.tool.tokenizer import get_token_list
 
 class LogCluster:
     __slots__ = ["log_template_tokens", "cluster_id", "size"]
@@ -20,7 +20,7 @@ class LogCluster:
         """
         self.log_template_tokens = tuple(log_template_tokens)
         self.cluster_id = cluster_id
-        self.size = 1
+        self.size = 1 #yd。用于统计当前cluster匹配的日志条数
 
     def get_template(self):
         return ' '.join(self.log_template_tokens)
@@ -138,6 +138,7 @@ class Drain:
 
         # find the leaf node for this log - a path of nodes matching the first N tokens (N=tree depth)
         cur_node_depth = 1
+
         for token in tokens:
             # at max depth
             if cur_node_depth >= self.max_node_depth:
@@ -235,7 +236,7 @@ class Drain:
     # seq1 is a template, seq2 is the log to match
     def get_seq_distance(self, seq1, seq2, include_params: bool):
         """
-
+        yd。功能：计算seq1与seq2的相似度，相似度 = 公共元素的个数/ seq1的长度
         :param seq1:
         :param seq2:
         :param include_params:
@@ -266,6 +267,7 @@ class Drain:
 
     def fast_match(self, cluster_ids: Sequence, tokens: list, sim_th: float, include_params: bool):
         """
+        yd。功能：从cluster_ids对应的所有cluster中，找出cluster.log_template_tokens与tokens相似度最高的
         Find the best match for a log message (represented as tokens) versus a list of clusters
         :param cluster_ids: List of clusters to match against (represented by their IDs)
         :param tokens: the log message, separated to tokens.
@@ -332,17 +334,36 @@ class Drain:
             out_str = '\t' * (depth + 1) + str(cluster)
             print(out_str, file=file)
 
-    def get_content_as_tokens(self, content):
+    def get_content_as_tokens_raw(self, content):
+        """
+        这是drain3最原始的分词代码，只考虑了英文，没有考虑中文的情况
+        :param content:
+        :return:
+        """
         content = content.strip()
         for delimiter in self.extra_delimiters:
             content = content.replace(delimiter, " ")
         content_tokens = content.split()
         return content_tokens
 
+
+    def get_content_as_tokens(self, content):
+        """
+        考虑中英文混杂，纯英文两种情况
+        :param content:
+        :return:
+        """
+        content = content.strip()
+        is_contain_chinese, substr_type_pattern, substr_detail_list, token_list,token_join_str = get_token_list(content)
+        content_tokens = token_list
+        print(f"content_tokens = {content_tokens}")
+        return content_tokens
+
+
     def add_log_message(self, content: str):
         """
         yd。功能：根据传入的content，获取匹配的logCluster，该LogCluster可能是先前已经存在的，也可能是需要新生成的
-        :param content:被正则匹配mask后的日志内容
+        :param content:被正则匹配mask后的日志内容，例如"connected to <:IP:>"
         :return:match_cluster：匹配的logCluster；update_type：表示更新match_cluster的原因
         """
         content_tokens = self.get_content_as_tokens(content)  # yd。对content进行分词
@@ -370,20 +391,20 @@ class Drain:
             if self.profiler:
                 self.profiler.start_section("cluster_exist")
             new_template_tokens = self.create_template(content_tokens, match_cluster.log_template_tokens)
-            if tuple(new_template_tokens) == match_cluster.log_template_tokens:
+            if tuple(new_template_tokens) == match_cluster.log_template_tokens: #yd。如果新创建的模板与最匹配的模板相同
                 update_type = "none"
-            else:
+            else:#yd。如果新创建的模板与最新的模板不相同，则用新创建的模板来更新最匹配的模板
                 match_cluster.log_template_tokens = tuple(new_template_tokens)
                 update_type = "cluster_template_changed"
             match_cluster.size += 1
             # Touch cluster to update its state in the cache.
             # noinspection PyStatementEffect
-            self.id_to_cluster[match_cluster.cluster_id]
+            self.id_to_cluster[match_cluster.cluster_id] #yd。因为使用了LRUCache机制来控制cluster个数，故这里需要访问一下match_cluster对应的id
 
         if self.profiler:
             self.profiler.end_section()
 
-        return match_cluster, update_type
+        return match_cluster, update_type,content_tokens
 
     def get_clusters_ids_for_seq_len(self, seq_len: int):
         """
