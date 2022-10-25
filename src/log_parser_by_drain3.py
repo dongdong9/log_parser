@@ -49,6 +49,7 @@ class LogParserByDrain3:
         return result, params
 
     def parse_log_file(self, raw_log_csv_path, result_file_path):
+        print(f"start to parse log {raw_log_csv_path}")
         log_item_df = open_excel(raw_log_csv_path)
         log_csv_header = ["_time", "content"]
         log_item_df = log_item_df[log_csv_header]
@@ -161,7 +162,7 @@ class LogParserByDrain3:
 
 if __name__ == '__main__':
     is_get_parse_result = True
-    is_get_indicator = True
+    is_get_indicator = False
     log_parser = LogParserByDrain3()
 
     if is_get_parse_result:
