@@ -15,28 +15,28 @@ class LogParserByStatistics:
 
     def get_event_template_and_parameter(self, is_contain_chinese, token_list, token_2_frequency, event_occurrences):
         """
-        功能：判断event中每个token出现的频次与event_occurrences是否相对，如果不相等，则该token就是parameter。
+        功能：判断event中每个token出现的频次与event_occurrences是否相对，
+             如果相等，则该token就是模板中的词；
+             如果不相等，则该token就是parameter。
         :param is_contain_chinese:
         :param token_list:
         :param token_2_frequency: 记录当前event_id对应的所有token出现的频次
         :param event_occurrences:当前event出现的次数
         :return:
         """
-
         template_token_list = []
         parameter_set = set([])
         parameter_list = []
         star_count = 0
         for token in token_list:
             frequency = token_2_frequency[token]
-            if frequency == event_occurrences:
-                #event_template += token
+            if frequency == event_occurrences: #如果该词在当前event中出现的频次等于该event出现的频次，则该词就是模板词
                 template_token_list.append(token)
                 continue
-            #event_template += "*"
-            template_token_list.append(STAR_CHAR)
+
+            template_token_list.append(STAR_CHAR) #该词是参数，用星号表示
             star_count += 1
-            if token not in parameter_set:
+            if token not in parameter_set: #将参数分别保存在list和set中
                 parameter_set.add(token)
                 parameter_list.append(token)
 
